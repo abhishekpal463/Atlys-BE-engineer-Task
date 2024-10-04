@@ -13,6 +13,7 @@ class CacheManager:
         cached_price = await self.redis.get(key)
         if cached_price is not None:
             cached_price = cached_price.decode('utf-8')
+            cached_price = float(cached_price)
             return cached_price == product['product_price']
         return False
 

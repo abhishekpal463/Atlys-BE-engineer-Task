@@ -12,7 +12,7 @@ class Scraper:
         self.base_url = base_url
         self.max_pages = max_pages
         self.proxy = proxy
-        self.headers = {"User-Agent": "Mozilla/5.0"}
+        self.headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"}
 
     async def fetch_page(self, session, url: str) -> str:
         retries = 3
@@ -33,24 +33,26 @@ class Scraper:
         soup = BeautifulSoup(html, 'lxml')
         products = []
         for product in soup.find_all('div', class_='mf-product-details'):
-
             title = product.find('h2', class_='woo-loop-product__title').text.strip()
-            price = product.find('span', class_='price')
-            price_amount=''
+            # Extract price using the specific span
+            price = product.find('span', class_='woocommerce-Price-amount amount')
+            price_amount = ''
+
             if price:
-                # Get the price amounts from both ins and del
-                ins_price = price.find('ins').find('bdi').text.strip() if price.find('ins') else None
-                del_price = price.find('del').find('bdi').text.strip() if price.find('del') else None
+                price_bdi = price.find('bdi').text.strip() if price.find('bdi') else None
+                if price_bdi:
+                    # Remove the currency symbol and commas, and strip whitespace
+                    price_amount = price_bdi.replace('₹', '').replace(',', '').strip()
 
-                # Use ins_price if available, otherwise use del_price
-                price_amount = ins_price if ins_price else del_price
+                    # Convert the cleaned price string to a float
+                    try:
+                        price_amount = float(price_amount)
+                    except ValueError:
+                        price_amount = 0.0  # Default to 0.0 if conversion fails
 
-                # Remove the currency symbol and keep it as a string
-                if price_amount:
-                    price_amount = price_amount.replace('₹', '').strip()  # Remove the currency symbol
-
-            if price_amount is None:
-                price_amount = "N/A"
+            # Handle case where price is not found or cannot be converted
+            if not price_amount:
+                price_amount = 0.0
 
             thumbnail_div = product.find_previous('div', class_='mf-product-thumbnail')  # Adjust this if necessary
             img = thumbnail_div.find('img') if thumbnail_div else None
@@ -85,7 +87,10 @@ class Scraper:
         async with aiohttp.ClientSession() as session:
             tasks = []
             for page_num in range(1, self.max_pages + 1):
-                url = f"{self.base_url}/page/{page_num}/"
+                if page_num==1:
+                    url = f"{self.base_url}/"
+                else:
+                    url = f"{self.base_url}/page/{page_num}/"
                 tasks.append(self.fetch_page(session, url))
 
             pages_content = await asyncio.gather(*tasks)

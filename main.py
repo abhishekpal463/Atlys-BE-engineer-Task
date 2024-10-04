@@ -18,7 +18,7 @@ def authenticate(token: str):
 
 @app.get("/scrape")
 async def scrape(token: str = Depends(authenticate), page: int = 5, proxy: Optional[str] = None):
-    scraper = Scraper(base_url="https://dentalstall.com/shop/", max_pages=page, proxy=proxy)
+    scraper = Scraper(base_url="https://dentalstall.com/shop", max_pages=page, proxy=proxy)
     products = await scraper.scrape()
     cache_manager = CacheManager()
     db_manager = DBManager(cache=cache_manager)
