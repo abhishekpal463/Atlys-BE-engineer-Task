@@ -4,6 +4,8 @@ import os
 from typing import List, Optional
 import asyncio
 
+from cache_manager import CacheManager
+
 
 class Scraper:
     def __init__(self, base_url: str, max_pages: Optional[int] = None, proxy: Optional[str] = None):
@@ -31,11 +33,10 @@ class Scraper:
         soup = BeautifulSoup(html, 'lxml')
         products = []
         for product in soup.find_all('div', class_='mf-product-details'):
-            #print(product)
+
             title = product.find('h2', class_='woo-loop-product__title').text.strip()
             price = product.find('span', class_='price')
-            price_amount = "N/A"  # Default value if price is not found
-
+            price_amount=''
             if price:
                 # Get the price amounts from both ins and del
                 ins_price = price.find('ins').find('bdi').text.strip() if price.find('ins') else None
@@ -48,8 +49,9 @@ class Scraper:
                 if price_amount:
                     price_amount = price_amount.replace('₹', '').strip()  # Remove the currency symbol
 
+            if price_amount is None:
+                price_amount = "N/A"
 
-            #print({title, price_amount})
             thumbnail_div = product.find_previous('div', class_='mf-product-thumbnail')  # Adjust this if necessary
             img = thumbnail_div.find('img') if thumbnail_div else None
 
@@ -59,8 +61,6 @@ class Scraper:
                 img_url = img.get('data-lazy-src') or img.get('src')  # Prefer lazy load URL
             else:
                 img_url = None  # Fallback if no image is found
-
-            print(img_url)
 
             # Download and save image locally if img_url exists
             img_path = await self.download_image(img_url) if img_url else None

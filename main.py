@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException
 from typing import List, Optional
 
+from cache_manager import CacheManager
 from db_manager import DBManager
 from notifier import Notifier
 from scraper import Scraper
@@ -16,12 +17,12 @@ def authenticate(token: str):
 
 
 @app.get("/scrape")
-async def scrape(token: str = Depends(authenticate), max_pages: int = 5, proxy: Optional[str] = None):
-    scraper = Scraper(base_url="https://dentalstall.com/shop/", max_pages=max_pages, proxy=proxy)
+async def scrape(token: str = Depends(authenticate), page: int = 5, proxy: Optional[str] = None):
+    scraper = Scraper(base_url="https://dentalstall.com/shop/", max_pages=page, proxy=proxy)
     products = await scraper.scrape()
-    print(products)
-    db_manager = DBManager()
-    updated_count = db_manager.update_products(products)
+    cache_manager = CacheManager()
+    db_manager = DBManager(cache=cache_manager)
+    updated_count = await db_manager.update_products(products)
 
     Notifier.notify(len(products))
     return {"scraped_products": len(products), "updated_products": updated_count}
